@@ -22,6 +22,14 @@ const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
 /* Vitesse du son dans l'air en mm/us */
 const float SOUND_SPEED = 340.0 / 1000;
 
+/*Variables d'entree*/
+bool CCT, CCL, CR, CL = false;
+/*Variables de sortie*/
+bool AVL, AVM, STOP, TR, TL = false;
+/*Declaration des etats*/
+enum Etat {E0, E1, E2, E3, E4, E5, E6};
+Etat EtatPrecedant, EtatPresent, EtatSuivant;
+
 /////////////////////////////////////
 void setup() {
   // put your setup code here, to run once:
@@ -65,6 +73,76 @@ void loop() {
     start = true;
   }
 
+  /*BLOC F*/
+  switch(EtatPresent){
+    case E0:
+      if(!CCT && !CCL){
+        EtatSuivant = E1;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E1:
+      if(CCL && !CCT){
+        EtatSuivant = E2;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E2:
+      if(CCT && !CR){
+        EtatSuivant = E3;
+      } else if(CCT && !CL && CR){
+        EtatSuivant = E5;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E3:
+      if(CL && !CCT && !CCL){
+        EtatSuivant = E4;
+      } else if(){ ////////////////////////////quand on a fini de tourner
+        EtatSuivant = E0;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E4:
+      if(!CL){
+        EtatSuivant = E5;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E5:
+      if(CR && !CCT && !CCL){
+        EtatSuivant = E6;
+      } else if(){ ////////////////////////////quand on a fini de tourner
+        EtatSuivant = E0;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+    case E6:
+      if(!CR){
+        EtatSuivant = E3;
+      } else{
+        EtatSuivant = EtatPresent;
+      }
+  }
+  
+  /*BLOC M*/
+  
+  /*BLOC G*/
+  if(EtatPresent == E0){
+    STOP = 1;
+  }
+  if(EtatPresent == E1 || EtatPresent == E4 || EtatPresent == E6){
+    AVM = 1;
+  }
+  if(EtatPresent == E2){
+    AVL = 1;
+  }
+  if(EtatPresent == E3){
+    TR = 1;
+  }
+  if(EtatPresent == E5){
+    TL = 1;
+  }
 }
 
 void arret() {
