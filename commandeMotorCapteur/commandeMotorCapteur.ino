@@ -11,10 +11,19 @@ unsigned long time1;
 unsigned long timeaux;
 
 bool start = true;
+bool init_E0 = true;
 
-//capteur ultrason
+//capteur ultrason AVANT (CC)
 const byte TRIGGER_PIN = 2; // Broche TRIGGER
 const byte ECHO_PIN = 3;    // Broche ECHO
+
+//capteur ultrason GAUCHE (CL)
+const byte TRIGGER_PIN_CL = 4;
+const byte ECHO_PIN_CL = 7;
+
+//capteur ultrason DROITE (CR)
+const byte TRIGGER_PIN_CR = 8;
+const byte ECHO_PIN_CR = 9;
 
 /* Constantes pour le timeout */
 const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
@@ -28,7 +37,7 @@ bool CCT, CCL, CR, CL = false;
 bool AVL, AVM, STOP, TR, TL = false;
 /*Declaration des etats*/
 enum Etat {E0, E1, E2, E3, E4, E5, E6};
-Etat EtatPrecedant, EtatPresent, EtatSuivant;
+Etat EtatPresent, EtatSuivant;
 
 /////////////////////////////////////
 void setup() {
@@ -37,29 +46,42 @@ void setup() {
   servoR.attach(5, 1000, 2000);
   servoL.attach(6, 1000, 2000); // attaches the servo on pin 9 to the servo object
 
-  /* Initialise les broches  capteur*/
+  /* Initialise les broches  capteurS CC, CL, CR*/
   pinMode(TRIGGER_PIN, OUTPUT);
   digitalWrite(TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
   pinMode(ECHO_PIN, INPUT);
-
+  pinMode(TRIGGER_PIN_CL, OUTPUT);
+  digitalWrite(TRIGGER_PIN_CL, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(ECHO_PIN_CL, INPUT);
+  pinMode(TRIGGER_PIN_CR, OUTPUT);
+  digitalWrite(TRIGGER_PIN_CR, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(ECHO_PIN_CR, INPUT);
 }
 
 /////////////////////////////////////
 void loop() {
-    digitalWrite(TRIGGER_PIN, HIGH);
+  digitalWrite(TRIGGER_PIN, HIGH);
+  digitalWrite(TRIGGER_PIN_CL, HIGH);
+  digitalWrite(TRIGGER_PIN_CR, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIGGER_PIN, LOW);
+  digitalWrite(TRIGGER_PIN_CL, LOW);
+  digitalWrite(TRIGGER_PIN_CR, LOW);
   
   /* 2. Mesure le temps entre l'envoi de l'impulsion ultrasonique et son écho (si il existe) */
   long measure = pulseIn(ECHO_PIN, HIGH, MEASURE_TIMEOUT);
+  long measure_CL = pulseIn(ECHO_PIN_CL, HIGH, MEASURE_TIMEOUT);
+  long measure_CR = pulseIn(ECHO_PIN_CR, HIGH, MEASURE_TIMEOUT);
    
   /* 3. Calcul la distance à partir du temps mesuré */
   float distance_mm = measure / 2.0 * SOUND_SPEED;
-
+  float distance_mm_CL = measure_CL / 2.0 * SOUND_SPEED;
+  float distance_mm_CR = measure_CR / 2.0 * SOUND_SPEED;
+  
   delay(50);
 
 //Test de commande des motors par liaison serie
-  if (distance_mm > 750.0) {
+  /*if (distance_mm > 750.0) {
     avancerMOY();
   } else if (distance_mm > 250.0) {
     avancerLENT();
@@ -71,6 +93,28 @@ void loop() {
     }
     arret();
     start = true;
+  }*/
+
+  /*affectation valeur variables*/
+  if(distance_mm < 750.0){
+    CCL = true;
+  } else{
+    CCL = false;
+  }
+  if(distance_mm <= 250.0){
+    CCT = true;
+  } else{
+    CCT = false;
+  }
+  if(distance_mm_CL <= 225.0){
+    CL = true;
+  } else{
+    CL = false;
+  }
+  if(distance_mm_CR <= 225.0){
+    CR = true;
+  }else{
+    CR = false;
   }
 
   /*BLOC F*/
@@ -126,23 +170,41 @@ void loop() {
   }
   
   /*BLOC M*/
+  if(init_E0){
+    EtatPresent = E0;
+  } else{
+    EtatPresent = EtatSuivant;
+  }
   
   /*BLOC G*/
   if(EtatPresent == E0){
-    STOP = 1;
+    //STOP = true;
+    arret();
   }
   if(EtatPresent == E1 || EtatPresent == E4 || EtatPresent == E6){
-    AVM = 1;
+    //AVM = true;
+    avancerMOY();
   }
   if(EtatPresent == E2){
-    AVL = 1;
+    //AVL = true;
+    avancerLENT();
   }
   if(EtatPresent == E3){
-    TR = 1;
+    //TR = true;
+    //tournerDroite
   }
   if(EtatPresent == E5){
-    TL = 1;
+    //TL = true;
+    arret();
+    if (start == true) {
+      tournergauche();
+      start = false;
+    }
+    arret();
+    start = true;
   }
+
+  init_E0 = false;
 }
 
 void arret() {
@@ -180,7 +242,7 @@ void reculeLENT() {
   servoR.write(105);
 }
 
-void tournergauche(float distance_mm) {
+void tournergauche() {
     time1 = millis() + 1900;
 
     timeaux = millis();
