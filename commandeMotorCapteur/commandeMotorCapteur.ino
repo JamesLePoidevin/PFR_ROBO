@@ -98,7 +98,7 @@ void loop() {
     case E3:
       if(CL && !CCT && !CCL){
         EtatSuivant = E4;
-      } else if(){ ////////////////////////////quand on a fini de tourner
+      } else if(CL && !CCT){
         EtatSuivant = E0;
       } else{
         EtatSuivant = EtatPresent;
@@ -112,7 +112,7 @@ void loop() {
     case E5:
       if(CR && !CCT && !CCL){
         EtatSuivant = E6;
-      } else if(){ ////////////////////////////quand on a fini de tourner
+      } else if(CR && !CCT){
         EtatSuivant = E0;
       } else{
         EtatSuivant = EtatPresent;
